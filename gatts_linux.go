@@ -49,7 +49,7 @@ func (om *objectManager) GetManagedObjects() (map[dbus.ObjectPath]map[string]map
 // https://git.kernel.org/pub/scm/bluetooth/bluez.git/tree/doc/org.bluez.GattCharacteristic.rst
 type bluezChar struct {
 	props      *prop.Properties
-	writeEvent func(client Connection, offset int, value []byte)
+	writeEvent func(client Connection, address string, offset int, value []byte)
 }
 
 func (c *bluezChar) ReadValue(options map[string]dbus.Variant) ([]byte, *dbus.Error) {
@@ -65,8 +65,25 @@ func (c *bluezChar) WriteValue(value []byte, options map[string]dbus.Variant) *d
 		// BlueZ doesn't seem to tell who did the write, so pass 0 always as the
 		// connection ID.
 		client := Connection(0)
+
+		// Get sender address
+		//println(options["device"].String())
+		// Becaue the build in connection sucks
+		// get the singleton ourselves
+		conn, _ := dbus.SystemBus()
+
+		device := conn.Object("org.bluez", options["device"].Value().(dbus.ObjectPath))
+
+		bt_address_prop, err := device.GetProperty("org.bluez.Device1.Address")
+		if err != nil {
+			println(err.Error())
+		}
+
+		bt_address := bt_address_prop.Value().(string)
+		//println(bt_address)
+
 		offset, _ := options["offset"].Value().(uint16)
-		c.writeEvent(client, int(offset), value)
+		c.writeEvent(client, bt_address, int(offset), value)
 	}
 	return nil
 }
@@ -160,7 +177,8 @@ func (c *Characteristic) Write(p []byte) (n int, err error) {
 	}
 
 	if c.char.writeEvent != nil {
-		c.char.writeEvent(0, 0, p)
+		// TODO this is supposed to be some address, whatever
+		c.char.writeEvent(0, "", 0, p)
 	}
 	gattError := c.char.props.Set("org.bluez.GattCharacteristic1", "Value", dbus.MakeVariant(p))
 	if gattError != nil {

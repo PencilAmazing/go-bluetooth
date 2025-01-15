@@ -7,7 +7,7 @@ type Service struct {
 	Characteristics []CharacteristicConfig
 }
 
-type WriteEvent = func(client Connection, offset int, value []byte)
+type WriteEvent = func(client Connection, address string, offset int, value []byte)
 
 // CharacteristicConfig contains some parameters for the configuration of a
 // single characteristic.
