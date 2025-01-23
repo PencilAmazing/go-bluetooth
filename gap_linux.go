@@ -416,6 +416,37 @@ func (d Device) Disconnect() error {
 	return d.device.Call("org.bluez.Device1.Disconnect", 0).Err
 }
 
+func (a *Adapter) GetConnectedDevices() []Device {
+	// Get managed managedObjects under bluez
+	managedObjects := a.bluez.Call("org.freedesktop.DBus.ObjectManager.GetManagedObjects", 0)
+	if managedObjects.Err != nil {
+		return []Device{}
+	}
+
+	// https://dbus.freedesktop.org/doc/dbus-specification.html
+	// org.freedesktop.DBus.ObjectManager.GetManagedObjects (out ARRAY of DICT_ENTRY<OBJPATH,ARRAY of DICT_ENTRY<STRING,ARRAY of DICT_ENTRY<STRING,VARIANT>>> objpath_interfaces_and_properties);
+	// The return value of this method is a dict whose keys are object paths.
+	// Each value is a dict whose keys are interfaces names
+	// a{oa{sa{sv}}}
+
+	deviceObjects := []Device{}
+	for objPath, interfaces := range managedObjects.Body[0].(map[dbus.ObjectPath]map[string]map[string]dbus.Variant) {
+		for k := range interfaces {
+			// Filter for only objects implementing org.bluez.Device1 interface
+			if k == "org.bluez.Device1" {
+				// This is a device
+				address, _ :=  MakeAddress(strings.Split(string(objPath), "dev_")[1])
+				deviceObjects = append(deviceObjects, Device{
+					Address: address,
+					device: a.bus.Object("org.bluez", objPath),
+					adapter: a,
+				})
+			}
+		}
+	}
+	return deviceObjects
+}
+
 // RequestConnectionParams requests a different connection latency and timeout
 // of the given device connection. Fields that are unset will be left alone.
 // Whether or not the device will actually honor this, depends on the device and
