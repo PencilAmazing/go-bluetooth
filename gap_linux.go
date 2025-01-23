@@ -23,6 +23,12 @@ type Address struct {
 	MACAddress
 }
 
+func MakeAddress(address string) (addr Address, err error) {
+	mac, err := ParseMAC(strings.ReplaceAll(address, "_", ":"))
+	addr = Address{MACAddress{MAC: mac}}
+	return
+}
+
 // Advertisement encapsulates a single advertisement instance.
 type Advertisement struct {
 	adapter    *Adapter
