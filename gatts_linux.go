@@ -50,13 +50,26 @@ func (om *objectManager) GetManagedObjects() (map[dbus.ObjectPath]map[string]map
 type bluezChar struct {
 	props      *prop.Properties
 	writeEvent func(client Connection, address string, offset int, value []byte)
+	readEvent  func(client Connection, address string, offset int) []byte
 }
 
 func (c *bluezChar) ReadValue(options map[string]dbus.Variant) ([]byte, *dbus.Error) {
 	// TODO: should we use the offset value? The BlueZ documentation doesn't
 	// clearly specify this. The go-bluetooth library doesn't, but I believe it
 	// should be respected.
-	value := c.props.GetMust("org.bluez.GattCharacteristic1", "Value").([]byte)
+	var value []byte = nil
+	if c.readEvent != nil {
+		// get user defined dynamic value
+		client := Connection(0) // Whatever
+		offset, _ := options["offset"].Value().(int16)
+		conn, _ := dbus.SystemBus()
+		deviceObject := conn.Object("org.bluez", options["device"].Value().(dbus.ObjectPath))
+		address_property, _ := deviceObject.GetProperty("org.bluez.Device1.Address")
+		address, _ := address_property.Value().(string)
+		value = c.readEvent(client, address, int(offset))
+	} else {
+		value = c.props.GetMust("org.bluez.GattCharacteristic1", "Value").([]byte)
+	}
 	return value, nil
 }
 
@@ -68,7 +81,6 @@ func (c *bluezChar) WriteValue(value []byte, options map[string]dbus.Variant) *d
 
 		// Get sender address
 		//println(options["device"].String())
-		// Becaue the build in connection sucks
 		// get the singleton ourselves
 		conn, _ := dbus.SystemBus()
 
@@ -144,6 +156,7 @@ func (a *Adapter) AddService(s *Service) error {
 		obj := &bluezChar{
 			props:      props,
 			writeEvent: char.WriteEvent,
+			readEvent:  char.ReadEvent,
 		}
 		err = a.bus.Export(obj, charPath, "org.bluez.GattCharacteristic1")
 		if err != nil {

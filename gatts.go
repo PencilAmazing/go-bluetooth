@@ -8,6 +8,7 @@ type Service struct {
 }
 
 type WriteEvent = func(client Connection, address string, offset int, value []byte)
+type ReadEvent = func(client Connection, address string, offset int) []byte
 
 // CharacteristicConfig contains some parameters for the configuration of a
 // single characteristic.
@@ -20,6 +21,7 @@ type CharacteristicConfig struct {
 	Value      []byte
 	Flags      CharacteristicPermissions
 	WriteEvent WriteEvent
+	ReadEvent  ReadEvent
 }
 
 // CharacteristicPermissions lists a number of basic permissions/capabilities
