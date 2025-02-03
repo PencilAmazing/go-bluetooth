@@ -436,11 +436,17 @@ func (a *Adapter) GetConnectedDevices() []Device {
 			if k == "org.bluez.Device1" {
 				// This is a device
 				address, _ :=  MakeAddress(strings.Split(string(objPath), "dev_")[1])
-				deviceObjects = append(deviceObjects, Device{
-					Address: address,
-					device: a.bus.Object("org.bluez", objPath),
-					adapter: a,
-				})
+				// is it connected?
+				devObject := a.bus.Object("org.bluez", objPath)
+				isConnectedProp, _ := devObject.GetProperty("org.bluez.Device1.Connected")
+				isConnected, _ := isConnectedProp.Value().(bool)
+				if isConnected {
+					deviceObjects = append(deviceObjects, Device{
+						Address: address,
+						device: a.bus.Object("org.bluez", objPath),
+						adapter: a,
+					})
+				}
 			}
 		}
 	}
