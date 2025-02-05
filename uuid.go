@@ -150,6 +150,15 @@ func ParseUUID(s string) (uuid UUID, err error) {
 	return
 }
 
+// Same as ParseUUID, but panics on error. Useful for global constants
+func MustParseUUID(s string) UUID {
+	uuid, err := ParseUUID(s)
+	if err != nil {
+		panic(err.Error())
+	}
+	return uuid
+};
+
 // String returns a human-readable version of this UUID, such as
 // 00001234-0000-1000-8000-00805f9b34fb.
 func (uuid UUID) String() string {
